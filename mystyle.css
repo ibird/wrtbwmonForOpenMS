@@ -1,0 +1,8 @@
+table, td , td
+{
+	border: 1px solid green;
+}
+td{
+	text-align:center;
+	padding:3px 15px;
+}

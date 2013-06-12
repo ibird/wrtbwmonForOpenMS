@@ -1,0 +1,251 @@
+#!/bin/sh
+#
+# Traffic logging tool for OpenWRT-based routers
+#
+# Created by Emmanuel Brucy (e.brucy AT qut.edu.au)
+#
+# Based on work from Fredrik Erlandsson (erlis AT linux.nu)
+# Based on traff_graph script by twist - http://wiki.openwrt.org/RrdTrafficWatch
+# 
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+
+LAN_IFACE=${2} || $(nvram get lan_ifname)
+
+del_mac ()
+{
+    config_file=$1
+    mac=$2
+    if [ ! -f $config_file ];then
+        echo "mac list config file"
+        exit
+    elif [ -z $mac ];then
+        echo "need mac"
+        exit
+    fi
+    #del mac user
+    sed -i "/$mac/ s/\tlist/#list/" $config_file
+
+}
+
+case ${1} in
+
+"setup" )
+
+	#Create the RRDIPT CHAIN (it doesn't matter if it already exists).
+	iptables -N RRDIPT 2> /dev/null
+	
+	#Create the FILTER CHAIN (it doesn't matter if it already exists).
+	iptables -N FILTER 2> /dev/null
+	
+	#Add the FILTER CHAIN to the FORWARD chain (if non existing).
+	iptables -L FORWARD --line-numbers -n | grep "FILTER" | grep "1" > /dev/null
+	if [ $? -ne 0 ]; then
+		iptables -L FORWARD -n | grep "FILTER" > /dev/null
+		if [ $? -ne 0 ]; then
+			iptables -D FORWARD -j FILTER
+		fi
+		iptables -I FORWARD -j FILTER
+	fi
+
+
+	#Add the RRDIPT CHAIN to the FORWARD chain (if non existing).
+	iptables -L FORWARD --line-numbers -n | grep "RRDIPT" | grep "2" > /dev/null
+	if [ $? -ne 0 ]; then
+		iptables -L FORWARD -n | grep "RRDIPT" > /dev/null
+		if [ $? -ne 0 ]; then
+			iptables -D FORWARD -j RRDIPT
+		fi
+		iptables -I FORWARD 2 -j RRDIPT
+	fi
+		
+	#For each ip in the filter table
+	cat /usr/local/lib/filter.txt |while read IP ;
+	do
+		iptables -nL FILTER |grep "${IP}" > /dev/null
+		if [ $? -ne 0 ]; then
+			iptables -I FILTER -s ${IP} -j ACCEPT
+			iptables -I FILTER -d ${IP} -j ACCEPT
+		fi
+	done
+
+	#For each host in the ARP table
+	grep ${LAN_IFACE} /proc/net/arp | while read IP TYPE FLAGS MAC MASK IFACE ;
+	do
+		#Add iptable rules (if non existing).
+		iptables -nL RRDIPT | grep "${IP} " > /dev/null
+		if [ $? -ne 0 ]; then
+			iptables -I RRDIPT -d ${IP} -j RETURN
+			iptables -I RRDIPT -s ${IP} -j RETURN
+		fi
+	done	
+	;;
+	
+"update" )
+	[ -z "${2}" ] && echo "ERROR : Missing argument 2" && exit 1
+	
+	# Uncomment this line if you want to abort if database not found
+	# [ -f "${2}" ] || exit 1
+
+
+	
+	#Read and reset counters
+	traffic=`iptables -L RRDIPT -vnxZ -t filter `
+
+	grep -v "0x0" /proc/net/arp | grep -v 'IP address' | grep -v eth1.1 | while read IP TYPE FLAGS MAC MASK IFACE
+	do
+		#Add new data to the graph. Count in Kbs to deal with 16 bits signed values (up to 2G only)
+		#Have to use temporary files because of crappy busybox shell
+		echo "$traffic" | grep ${IP} | while read PKTS BYTES TARGET PROT OPT IFIN IFOUT SRC DST
+		do
+			[ "${DST}" = "${IP}" ] && echo ${BYTES} > /tmp/in.tmp
+			[ "${SRC}" = "${IP}" ] && echo ${BYTES} > /tmp/out.tmp
+		done
+		
+		IN=$(cat /tmp/in.tmp)
+		OUT=$(cat /tmp/out.tmp)
+		rm -f /tmp/in.tmp
+		rm -f /tmp/out.tmp
+		
+		if [ ${IN} -gt 0 -o ${OUT} -gt 0 ];  then
+			echo "DEBUG : New traffic for ${MAC} since last update : ${IN}k:${OUT}k"
+		
+			nf=0
+	                #这个user享有nf个mac
+           		content=`grep ${MAC} ${2}`
+           		#看共有几个字段，以,分隔
+           		nf=`echo $content | tr ',' '\n' |grep -c 'mac'`	
+           		nf=$((nf*4+5))
+           		i=6
+           		while [ $i -lt $nf ]
+           		do
+                		line=`echo $content | cut -d, -f$i | grep ${MAC} | wc -l`
+                		if [ $line -eq 1 ] ;then
+                    			in=$(echo ${content} | cut -d, -f$((i+1)) | awk -F\" '{print $4}' )
+                    			out=$(echo ${content} | cut  -d, -f$((i+2)) | awk -F\" '{print $4}')
+                    			break
+                		fi
+				i=$((i+1))
+           		done
+			PEAKUSAGE_IN=$((in+IN))
+			PEAKUSAGE_OUT=$((out+OUT))
+            		nowflow=$((PEAKUSAGE_OUT+PEAKUSAGE_IN));
+             		sed -i  "/$MAC/  s/nowflow\":\"[0-9]*\"/nowflow\":\"$nowflow\"/" $2
+            		sed -i "s/\"${MAC}\",\"in\":\"$in\",\"out\":\"$out\"/\"${MAC}\",\"in\":\"${PEAKUSAGE_IN}\",\"out\":\"${PEAKUSAGE_OUT}\"/" ${2}
+		fi
+	done
+	
+#	Free some memory
+	rm -f /tmp/*_$$.tmp
+	;;
+	
+"check" )    # 需要三个参数 $1 option $2 json file $3 maclist file
+    if [ ! -f $2 ];then
+        echo -e "file no exist ,please input the json file\n"
+        exit
+    fi
+    for line in `grep '\<id\>'  ${2}  | cut -d, -f 3,4,6`
+    do
+        total=`echo $line | awk -F\" '{print $4}'`
+        nowflow=`echo $line | awk -F\" '{print $8}'`
+        if [ $nowflow -ge $total ];then
+        #delete the mac user
+            mac=`echo $line | awk -F\" '{print $12}'`
+            content=`grep $mac ${2}`
+            nf=`echo $content | awk -F, '{print (NF-4)/4}'`
+            if [ $nf -gt 1 ];then
+                #tow more record
+                i=6
+                nf=$((nf*4+5))
+                while [$i -lt $nf]
+                do
+                    m=`grep $mac ${2} | cut -d, -f$i | awk -F\" '{print $4}'`
+                    #delete the mac user
+                    del_mac $3 $m
+                    i=$((i+4))
+                done
+            else
+                #delete the mac
+                    del_mac $3 $mac
+            fi
+        fi
+    done
+    ;;
+
+"clear" )  #传三个参数 一个option 一个json一个maclist  
+    if [ ! -f $2 -o ! -f $3  ];then
+        if [ ! -f $2 ];then
+            echo "json file wrong!"
+        else
+            echo "maclist file wrong!"
+        fi
+    exit
+    fi
+    #清零之前备份数据
+    cp $2 $2.`date -I`
+    #清零
+    sed -i "s/nowflow\":\"[0-9]*\"/nowflow\":\"0\"/" ${2}
+    sed -i "s/in\":\"[0-9]*\",\"out\":\"[0-9]*\"/in\":\"0\",\"out\":\"0\"/g" ${2}
+
+    #解绑
+    sed -i "s/^#//" $3
+
+    ;;
+
+    #检查 json文件和maclist文件是否同步
+"sync" )  
+# $1 option $2 json file  $3 maclist file
+    if [ ! -f $2 -o ! -f $3 ];then
+        echo "json file and maclist file not exist!"
+        exit
+    fi
+    cp $3 $3.bak
+    config=`grep -v 'list maclist' $3.bak > $3` 
+    for line in `grep 'id' $2`
+    do
+        total=`echo $line | cut -d, -f3 | awk -F\" '{print $4}'`
+        nowflow=`echo $line | cut -d, -f4 | awk -F\" '{print $4}'`
+        nf=`echo $line |tr ',' '\n'| grep -c 'mac'`
+        i=6
+        nf=$((nf*4+5))
+        while [ $i -lt $nf ] 
+        do
+            mac=`echo $line | cut -d, -f$i | awk -F\" '{print $4}'`
+            if [ $total -gt $nowflow ];then
+                echo -e "\tlist maclist $mac" >> $3
+            else
+                echo -e "#\tlist maclist $mac" >> $3
+            fi
+	    i=$((i+4))
+        done
+    done
+    rm -f $3.bak
+    (wifi down;wifi up)&
+    ;;
+
+*)
+	echo "Usage : $0 {setup|update|check|clear|sync} [options...]"
+	echo "Options : " 
+	echo "   $0 setup"
+	echo "   $0 update database_file [offpeak]"
+	echo "   $0 publish database_file path_of_html_report [user_file]"
+	echo "Examples : "
+	echo "   $0 setup"
+	echo "   $0 update /tmp/usage.db offpeak"
+	echo "   $0 publish /tmp/usage.db /www/user/usage.htm /jffs/users.txt"
+	echo "Note : [user_file] is an optional file to match users with their MAC address"
+	echo "       Its format is : 00:MA:CA:DD:RE:SS,username , with one entry per line"
+	exit
+	;;
+esac
