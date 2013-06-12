@@ -26,6 +26,6 @@ Wrtbwmon		----	一个利用iptable进行流量统计的shell脚本
 实现一套web管理系统，便于管理员操作，实现用户和设备的增删改操作,并且触发后端的脚本去同步。
 
 Cron配置:
-# * * * * * /bin/wrtbwmon setup br-lan
-# * * * * * /bin/wrtbwmon update /www/openms/data.json
-# 3 1 1 * * /bin/wrtbwmon clear /www/openms/data.json /etc/config/wireless
+* * * * * * /bin/wrtbwmon setup br-lan
+* * * * * * /bin/wrtbwmon update /www/openms/data.json
+* 3 1 1 * * /bin/wrtbwmon clear /www/openms/data.json /etc/config/wireless
