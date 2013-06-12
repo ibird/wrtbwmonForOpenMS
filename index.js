@@ -196,7 +196,6 @@
 	}
 
 	var check = function(response){
-			//setTimeout("window.location.assign('http://10.0.0.1/openms/test.php')", 5000)
 			time = document.getElementById('time')
 			var input =document.createElement('input')
 			input.setAttribute('type', 'button')
@@ -215,7 +214,7 @@
 	        if (value>1) 
 	        	document.all['timer'].value=value-1;
 		else {
-			window.location.assign('http://10.0.0.1/openms/test.php')
+			window.location.assign('http://10.0.0.1/openms/index.php')
                  }
                  window.setTimeout("timer()",1000);
 	}
