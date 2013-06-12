@@ -3,9 +3,6 @@
 # Traffic logging tool for OpenWRT-based routers
 #
 # Created by Emmanuel Brucy (e.brucy AT qut.edu.au)
-#
-# Based on work from Fredrik Erlandsson (erlis AT linux.nu)
-# Based on traff_graph script by twist - http://wiki.openwrt.org/RrdTrafficWatch
 # 
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -20,9 +17,21 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+#
+# Hacked by Ibird Yuan and Zeng ShaoJian
+# We Make it to update to 'data.json' and sync to '/etc/config/wireless' to # control the traffic.
 
 LAN_IFACE=${2} || $(nvram get lan_ifname)
 
+WAN='eth1.1'
+
+# Get the filter file
+# For example, we can filter the intranet traffic
+
+FILTER='/www/filter.txt'
+
+#use SED to annotate the mac address in the file
+#Make the mac address unwork
 del_mac ()
 {
     config_file=$1
@@ -71,7 +80,7 @@ case ${1} in
 	fi
 		
 	#For each ip in the filter table
-	cat /usr/local/lib/filter.txt |while read IP ;
+	cat $FILTER |while read IP ;
 	do
 		iptables -nL FILTER |grep "${IP}" > /dev/null
 		if [ $? -ne 0 ]; then
@@ -95,15 +104,10 @@ case ${1} in
 "update" )
 	[ -z "${2}" ] && echo "ERROR : Missing argument 2" && exit 1
 	
-	# Uncomment this line if you want to abort if database not found
-	# [ -f "${2}" ] || exit 1
-
-
-	
 	#Read and reset counters
 	traffic=`iptables -L RRDIPT -vnxZ -t filter `
 
-	grep -v "0x0" /proc/net/arp | grep -v 'IP address' | grep -v eth1.1 | while read IP TYPE FLAGS MAC MASK IFACE
+	grep -v "0x0" /proc/net/arp | grep -v 'IP address' | grep -v $WAN | while read IP TYPE FLAGS MAC MASK IFACE
 	do
 		#Add new data to the graph. Count in Kbs to deal with 16 bits signed values (up to 2G only)
 		#Have to use temporary files because of crappy busybox shell
@@ -121,13 +125,15 @@ case ${1} in
 		if [ ${IN} -gt 0 -o ${OUT} -gt 0 ];  then
 			echo "DEBUG : New traffic for ${MAC} since last update : ${IN}k:${OUT}k"
 		
+			# compute the number of the user's mac address
+			# detail see the data.json
 			nf=0
-	                #这个user享有nf个mac
            		content=`grep ${MAC} ${2}`
-           		#看共有几个字段，以,分隔
            		nf=`echo $content | tr ',' '\n' |grep -c 'mac'`	
            		nf=$((nf*4+5))
            		i=6
+
+			# get the mac address's old flow
            		while [ $i -lt $nf ]
            		do
                 		line=`echo $content | cut -d, -f$i | grep ${MAC} | wc -l`
@@ -141,6 +147,8 @@ case ${1} in
 			PEAKUSAGE_IN=$((in+IN))
 			PEAKUSAGE_OUT=$((out+OUT))
             		nowflow=$((PEAKUSAGE_OUT+PEAKUSAGE_IN));
+
+			#update nowflow and in and out flow to the file
              		sed -i  "/$MAC/  s/nowflow\":\"[0-9]*\"/nowflow\":\"$nowflow\"/" $2
             		sed -i "s/\"${MAC}\",\"in\":\"$in\",\"out\":\"$out\"/\"${MAC}\",\"in\":\"${PEAKUSAGE_IN}\",\"out\":\"${PEAKUSAGE_OUT}\"/" ${2}
 		fi
@@ -150,40 +158,7 @@ case ${1} in
 	rm -f /tmp/*_$$.tmp
 	;;
 	
-"check" )    # 需要三个参数 $1 option $2 json file $3 maclist file
-    if [ ! -f $2 ];then
-        echo -e "file no exist ,please input the json file\n"
-        exit
-    fi
-    for line in `grep '\<id\>'  ${2}  | cut -d, -f 3,4,6`
-    do
-        total=`echo $line | awk -F\" '{print $4}'`
-        nowflow=`echo $line | awk -F\" '{print $8}'`
-        if [ $nowflow -ge $total ];then
-        #delete the mac user
-            mac=`echo $line | awk -F\" '{print $12}'`
-            content=`grep $mac ${2}`
-            nf=`echo $content | awk -F, '{print (NF-4)/4}'`
-            if [ $nf -gt 1 ];then
-                #tow more record
-                i=6
-                nf=$((nf*4+5))
-                while [$i -lt $nf]
-                do
-                    m=`grep $mac ${2} | cut -d, -f$i | awk -F\" '{print $4}'`
-                    #delete the mac user
-                    del_mac $3 $m
-                    i=$((i+4))
-                done
-            else
-                #delete the mac
-                    del_mac $3 $mac
-            fi
-        fi
-    done
-    ;;
-
-"clear" )  #传三个参数 一个option 一个json一个maclist  
+"clear" )  # $2 is json file. $3 is the maclist file
     if [ ! -f $2 -o ! -f $3  ];then
         if [ ! -f $2 ];then
             echo "json file wrong!"
@@ -192,20 +167,19 @@ case ${1} in
         fi
     exit
     fi
-    #清零之前备份数据
+    #bake-up the file
     cp $2 $2.`date -I`
-    #清零
+    #clear
     sed -i "s/nowflow\":\"[0-9]*\"/nowflow\":\"0\"/" ${2}
     sed -i "s/in\":\"[0-9]*\",\"out\":\"[0-9]*\"/in\":\"0\",\"out\":\"0\"/g" ${2}
 
-    #解绑
+    #sync
     sed -i "s/^#//" $3
 
     ;;
 
-    #检查 json文件和maclist文件是否同步
 "sync" )  
-# $1 option $2 json file  $3 maclist file
+# $2  is the json file. $3 is the  maclist file
     if [ ! -f $2 -o ! -f $3 ];then
         echo "json file and maclist file not exist!"
         exit
@@ -235,17 +209,17 @@ case ${1} in
     ;;
 
 *)
-	echo "Usage : $0 {setup|update|check|clear|sync} [options...]"
+	echo "Usage : $0 {setup|update|clear|sync} [options...]"
 	echo "Options : " 
 	echo "   $0 setup"
-	echo "   $0 update database_file [offpeak]"
-	echo "   $0 publish database_file path_of_html_report [user_file]"
+	echo "   $0 update json_file"
+	echo "   $0 clear json_file maclist_file"
+	echo "   $0 sync  json_file maclist_file"
 	echo "Examples : "
 	echo "   $0 setup"
-	echo "   $0 update /tmp/usage.db offpeak"
-	echo "   $0 publish /tmp/usage.db /www/user/usage.htm /jffs/users.txt"
-	echo "Note : [user_file] is an optional file to match users with their MAC address"
-	echo "       Its format is : 00:MA:CA:DD:RE:SS,username , with one entry per line"
+	echo "   $0 update /www/data.json"
+	echo "   $0 clear  /www/data.json /etc/config/wireless"
+	echo "   $0 sync   /www/data.json /etc/config/wireless"
 	exit
 	;;
 esac
