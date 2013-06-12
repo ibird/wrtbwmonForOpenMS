@@ -2,7 +2,6 @@
 
 function change($device, $macaddr, $id, $json)
 {
-	$flag = 0;
 	foreach ($json['club'] as $k => $v)
 	{
 		if($v['id'] == $id)
@@ -17,15 +16,17 @@ function change($device, $macaddr, $id, $json)
 		}
 	}
 	$json_str = json_encode($json);
+	
+	//为了保证data.json的数据格式便于wrtbwmon脚本操作，在
+	//id前加入回车,保证每个用户一条记录占用一行
 	$json_str = str_replace('{"id"',"\n{\"id\"",$json_str);
+	
 	file_put_contents('data.json',$json_str);
-	echo $flag;
 	exec('wrtbwmon sync /www/openms/data.json /etc/config/wireless');
 }
 
 function add($device, $macaddr, $id, $json)
 {
-	$flag = 0;
 	$arr['type'] = $device;
 	$arr['mac'] = $macaddr;
 	$arr['in'] = "0";
@@ -41,13 +42,11 @@ function add($device, $macaddr, $id, $json)
 	$json_str = json_encode($json);
 	$json_str = str_replace('{"id"',"\n{\"id\"",$json_str);
 	file_put_contents('data.json',$json_str);
-	echo $flag;
 	exec('wrtbwmon sync /www/openms/data.json /etc/config/wireless');
 }
 
 function adduser($id, $name, $total, $json)
 {
-	$flag = 0;
 	$arr['id'] = $id;
 	$arr['name'] = $name;
 	$arr['total'] = $total;
@@ -57,12 +56,10 @@ function adduser($id, $name, $total, $json)
 	$json['club'][] = $arr;
 	$json_str = json_encode($json);
 	$json_str = str_replace('{"id"',"\n{\"id\"",$json_str);
-	echo $flag;
 	file_put_contents('data.json',$json_str);
 }
 function changeFlow($flow, $id, $json)
 {
-	$flag = 0;
 
 	foreach ($json['club'] as $k => $v)
 	{
@@ -75,13 +72,11 @@ function changeFlow($flow, $id, $json)
 	$json_str = str_replace('{"id"',"\n{\"id\"",$json_str);
 	file_put_contents('data.json',$json_str);
 	exec('wrtbwmon sync /www/openms/data.json /etc/config/wireless');
-	echo $flag;
 
 }
 
 function delDev($id, $mac, $json) 
 {
-	$flag = 0;
 	foreach ($json['club'] as $k => $v)
 	{
 		if($v['id'] == $id)
@@ -99,13 +94,11 @@ function delDev($id, $mac, $json)
 	$json_str = str_replace('{"id"',"\n{\"id\"",$json_str);
 	file_put_contents('data.json',$json_str);
 	exec('wrtbwmon sync /www/openms/data.json /etc/config/wireless');
-	echo $flag;
 
 }
 
 function delUser($id, $json)
 {
-	$flag = 0;
 	foreach ($json['club'] as $k => $v)
 	{
 		if($v['id'] == $id)
@@ -116,14 +109,11 @@ function delUser($id, $json)
 	$json_str = json_encode($json);
 	$json_str = str_replace('{"id"',"\n{\"id\"",$json_str);
 	file_put_contents('data.json',$json_str);
-	echo $flag;
 	exec('wrtbwmon sync /www/openms/data.json /etc/config/wireless');
 }
 
 function cleanFlow()
 {
-	$flag = 0;
-	echo $flag;
 	exec('wrtbwmon clear /www/openms/data.json /etc/config/wireless');
 }
 
@@ -148,6 +138,7 @@ function funToArgv($fun)
 	}
 	case 'changeFlow':
 	{
+		// 将提交的GB 转为 byte
 		$arr['flow'] = (string)($_POST['flow'] * 1024 * 1024 * 1024);
 		$arr['id'] = $_POST['id'];
 		break;
@@ -180,8 +171,11 @@ function funToArgv($fun)
 	return $arr;
 }
 
+// 获取json数据，转化为数组
 $json_string = file_get_contents('data.json');
 $json =json_decode($json_string, true);
+
+// 通过method字段来过滤不同函数所需的变量，然后利用php的回调机制，通过method字段来调用不同的函数
 $arr = funToArgv($_POST['method']);
 $arr['json'] = $json;
 call_user_func_array($_POST['method'],$arr);
