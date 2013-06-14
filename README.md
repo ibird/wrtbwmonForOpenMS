@@ -1,5 +1,6 @@
 ##	路由流量监控管理平台
 
+![软件截图](http://github.com/ibird/wrbwmonForOpenMS/raw/master/screen.png)
 ###	What
 	路由流量监控管理平台是为了方便网络管理人员监控流量而做的一套基于openwrt的软件。
 	由后端shell脚本和前端web系统两部分组成。
