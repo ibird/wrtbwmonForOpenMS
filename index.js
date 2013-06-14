@@ -232,4 +232,5 @@
                  }
                  window.setTimeout("timer()",1000);
 	}
+	//显示页面
 	showJson(json);
