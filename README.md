@@ -25,7 +25,7 @@
 				3 1 1 * * /bin/wrtbwmon clear /www/openms/data.json /etc/config/wireless
 		-	uhttpd			Openwrt下的web服务器	(opkg install uhttpd)
 		-	php5			php解析器		(opkg install php5)
-		-	php5-mod-json		php的json处理模块	(opkg install php5-mod-json）
+		-	php5-mod-json	php的json处理模块	(opkg install php5-mod-json）
 
 
 ###	How
