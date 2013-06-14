@@ -1,5 +1,7 @@
+	//将json字符串转化为json对象
 	var json = eval ("(" + json + ")");
-	
+
+	//将data.json中的数据输出为html	
 	showJson = function(obj) {
 		var user = new Array()
 
@@ -40,13 +42,12 @@
 		document.write("</table>")
 		document.write("<div id='time' style='display:none'></div>")
 	}
-
+	
+	//ajax方法
 	var ajax = function(url, f, string){ 
 		var xml = (window.XMLHttpRequest) ? (new XMLHttpRequest()) : (new ActiveXObject("Micorsoft.XMLHttpRequest"));
         	xml.onreadystatechange = function(){
-       		//if(xml.readyState == 0) {
           		f(xml.responseText);
-        	//}}
         	}
 
     		xml.open("POST",url,true);
@@ -54,7 +55,7 @@
 		xml.send(string);
 		}
 
-
+	//增加设备
 	var add = function(obj){
 		a = obj.parentNode.parentNode
 		var arr = ['pc', 'kindle', 'phone', 'laptop', 'others']
@@ -69,6 +70,7 @@
 		a.childNodes[7].childNodes[0].setAttribute('onclick','addSubmit(this)')
 	}
 	
+	//初始化select标签，参数为option的value值的数组
 	var initSelect = function( arr )
 	{
 		var select = document.createElement('select')
@@ -81,7 +83,8 @@
 		}
 		return select
 	}	
-
+	
+	//删除用户
 	var delUser = function(obj){
 		var r = confirm("您确定要删除该设备？")
 		if (r == true)
@@ -92,6 +95,8 @@
 			ajax('/openms/accept.php',check,string)
 		}		
 	}
+
+	//更改用户总流量
 	var changeFlow = function(obj){
 		a = obj.parentNode.parentNode
 		a.childNodes[1].removeChild(a.childNodes[1].childNodes[0])
@@ -105,6 +110,7 @@
 		a.childNodes[8].childNodes[0].setAttribute('onclick','changeFlowSub(this)')
 	}
 
+	//更改用户流量后通过ajax方法提交
 	var changeFlowSub = function(obj) {
 		a = obj.parentNode.parentNode
 		select =  a.childNodes[1].childNodes[0]
@@ -115,6 +121,8 @@
 		ajax('/openms/accept.php', check, string)
 		
 	}
+
+	//删除设备
 	var delDev = function(obj){
 		var r = confirm("您确定要删除该设备？")
 		if (r == true)
@@ -128,7 +136,7 @@
 		}		
 	}
 
-
+	//增加用户
 	var addUser = function(obj){
 		a = obj.parentNode.parentNode
 
@@ -143,7 +151,8 @@
 		a.childNodes[3].childNodes[0].setAttribute('value','确定')
 		a.childNodes[3].childNodes[0].setAttribute('onclick','addUserSubmit(this)')
 	}
-
+	
+	//更改设备的mac地址
 	var change = function(obj){
 		a = obj.parentNode.parentNode
 		oldmac = a.childNodes[1].childNodes[0].nodeValue	
@@ -157,6 +166,7 @@
 		a.childNodes[4].childNodes[0].setAttribute('onclick','changeSubmit(this)')
 	}
 	
+	//增加设备后通过ajax方法提交
 	var addSubmit = function(obj){
 		a = obj.parentNode.parentNode
 		select =  a.childNodes[3].childNodes[0]
@@ -168,6 +178,7 @@
 		ajax('/openms/accept.php', check, string)
 	}
 
+	//增加用户后通过ajax方法提交
 	var addUserSubmit = function(obj){
 		a = obj.parentNode.parentNode
 		select = a.childNodes[1].childNodes[0]
@@ -178,7 +189,8 @@
 		string = 'id=' + id +  '&name=' + name + "&total=" + total + "&method=" + method
 		ajax('/openms/accept.php', check, string)
 	}
-
+	
+	//改变设备mac地址后通过ajax方法提交
 	var changeSubmit = function(obj){
 		a = obj.parentNode.parentNode
 		device =  a.childNodes[0].childNodes[0].nodeValue
@@ -189,6 +201,7 @@
 		ajax('/openms/accept.php', check, string)
 	}
 
+	//清除流量后通过ajax方法提交
 	var cleanFlow = function()
 	{
 		string = 'method=cleanFlow'
@@ -209,6 +222,7 @@
 			time.appendChild(input)
 			timer()
 	}
+	//计时器方法，在ajax方法下没改变一次response状态，一秒后再发起请求，保证后端wifi重置后，网页连接能再次连上
 	var timer =function(){
 		var value=Number(document.all['timer'].value);
 	        if (value>1) 
