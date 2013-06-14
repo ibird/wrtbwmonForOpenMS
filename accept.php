@@ -1,5 +1,6 @@
 <?php
 
+//更改设备mac地址
 function change($device, $macaddr, $id, $json)
 {
 	foreach ($json['club'] as $k => $v)
@@ -25,6 +26,7 @@ function change($device, $macaddr, $id, $json)
 	exec('wrtbwmon sync /www/openms/data.json /etc/config/wireless');
 }
 
+//新增设备
 function add($device, $macaddr, $id, $json)
 {
 	$arr['type'] = $device;
@@ -45,6 +47,7 @@ function add($device, $macaddr, $id, $json)
 	exec('wrtbwmon sync /www/openms/data.json /etc/config/wireless');
 }
 
+//新增用户
 function adduser($id, $name, $total, $json)
 {
 	$arr['id'] = $id;
@@ -58,6 +61,8 @@ function adduser($id, $name, $total, $json)
 	$json_str = str_replace('{"id"',"\n{\"id\"",$json_str);
 	file_put_contents('data.json',$json_str);
 }
+
+//更改设备流量
 function changeFlow($flow, $id, $json)
 {
 
@@ -75,6 +80,7 @@ function changeFlow($flow, $id, $json)
 
 }
 
+//删除设备
 function delDev($id, $mac, $json) 
 {
 	foreach ($json['club'] as $k => $v)
@@ -97,6 +103,7 @@ function delDev($id, $mac, $json)
 
 }
 
+//删除用户
 function delUser($id, $json)
 {
 	foreach ($json['club'] as $k => $v)
@@ -112,11 +119,13 @@ function delUser($id, $json)
 	exec('wrtbwmon sync /www/openms/data.json /etc/config/wireless');
 }
 
+//清除流量
 function cleanFlow()
 {
 	exec('wrtbwmon clear /www/openms/data.json /etc/config/wireless');
 }
 
+//数据预处理
 function funToArgv($fun)
 {
 	$arr = array();
