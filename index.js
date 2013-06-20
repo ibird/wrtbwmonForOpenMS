@@ -3,43 +3,49 @@
 
 	//将data.json中的数据输出为html	
 	showJson = function(obj) {
-		var user = new Array()
 
-		var total = new Array()
+		var total = []
 		total['flow'] = 0
 		total['down'] = 0
 		total['up'] = 0
 
 		var html = "<table><tr><td>姓名</td><td>总流量(M)</td><td>已用流量(M)</td><td>设备名</td><td>设备Mac地址</td><td>上传量(M)</td><td>下载量(M)</td><td colspan='4'>操作</td></tr>"
 		document.write(html)
+
 		for (x in obj.club)
 		{
 			var device_n = obj.club[x].device.length + 1
 			var totalFlow = parseInt(obj.club[x].total / 1024 / 1024 )
 			var nowFlow = parseInt(obj.club[x].nowflow / 1024 / 1024)
-			var user = "<tr><td rowspan='"+device_n+"'>"+obj.club[x].name+"</td><td rowspan='"+device_n+"'>"+totalFlow+"</td><td rowspan='"+device_n+"'>"+nowFlow+"</td><td></td><td></td><td></td><td></td><td colspan='2'><input type='button' value='新增设备' name='"+ obj.club[x].id+"'  onclick='add(this)'/></td><td rowspan='"+device_n+"'><input type='button' value='修改流量' name='"+ obj.club[x].id+"'  onclick='changeFlow(this)'/></td><td rowspan='"+device_n+"'><input type='button' value='删除用户' name='"+ obj.club[x].id+"'  onclick='delUser(this)'/></td></tr>"
-			total['flow'] += parseFloat(nowFlow)
-			document.write(user)
+			total['flow'] += nowFlow
+
+			var html = "<tr><td rowspan='"+device_n+"'>"+obj.club[x].name+"</td><td rowspan='"+device_n+"'>"+totalFlow+"</td><td id='" + x + "_flow' rowspan='"+device_n+"'>"+nowFlow+"</td><td></td><td></td><td></td><td></td><td colspan='2'><input type='button' value='新增设备' name='"+ obj.club[x].id+"'  onclick='add(this)'/></td><td rowspan='"+device_n+"'><input type='button' value='修改流量' name='"+ obj.club[x].id+"'  onclick='changeFlow(this)'/></td><td rowspan='"+device_n+"'><input type='button' value='删除用户' name='"+ obj.club[x].id+"'  onclick='delUser(this)'/></td></tr>"
+
+
+			document.write(html)
 
 			for ( y in obj.club[x].device)
 			{
 				i = obj.club[x].device[y]
-				down = (parseInt)(i.out / 1024 / 1024)
-				up = (parseInt)(i.in / 1024 /1024)
-				var device = "<td>"+i.type+"</td><td>"+i.mac+"</td><td>"+up+"</td><td>"+down+"</td><td><input type='button' value='修改Mac' name='"+obj.club[x].id+"' onclick='change(this)'/></td><td><input type='button' value='删除设备' name='"+obj.club[x].id+"' onclick='delDev(this)'/></td></tr>"
-				document.write(device)
-
+				down = (parseInt)(i['out'] / 1024 / 1024)
+				up = (parseInt)(i['in'] / 1024 /1024)
 				total['down'] += down
 				total['up'] += up
+
+				var html = "<td>"+i.type+"</td><td>"+i.mac+"</td><td>"+up+"</td><td>"+down+"</td><td><input type='button' value='修改Mac' name='"+obj.club[x].id+"' onclick='change(this)'/></td><td><input type='button' value='删除设备' name='"+obj.club[x].id+"' onclick='delDev(this)'/></td></tr>"
+				document.write(html)
+
 			}
 
 			var nowID = parseInt(obj.club[x].id) + 1
 		}
-		var adduser = "<tr><td></td><td></td><td colspan='5'></td><td colspan='4'><input type='button' value='新增用户' name='" + nowID + "' onclick='addUser(this)' /></td></tr>"
-		document.write(adduser);
-		var end = "<tr><td >总计</td><td>30720</td><td>"+total['flow']+"</td><td colspan='2'></td><td>"+total['up']+"</td><td>"+total['down']+"</td><td colspan='4'><input type='button' value='清零流量' onclick='cleanFlow()' /></td></tr>"
-		document.write(end)
-		document.write("</table>")
+
+		html = "<tr><td></td><td></td><td colspan='5'></td><td colspan='4'><input type='button' value='新增用户' name='" + nowID + "' onclick='addUser(this)' /></td></tr>"
+		document.write(html);
+
+		html = "<tr><td >总计</td><td>30720</td><td>"+total['flow']+"</td><td colspan='2'></td><td>"+total['up']+"</td><td>"+total['down']+"</td><td colspan='4'><input type='button' value='清零流量' onclick='cleanFlow()' /></td></tr></table>"
+		document.write(html)
+
 		document.write("<div id='time' style='display:none'></div>")
 	}
 	
@@ -66,8 +72,8 @@
 		input.setAttribute('type', 'text')	
 		a.childNodes[4].appendChild(input)
 
-		a.childNodes[7].childNodes[0].setAttribute('value','确定')
-		a.childNodes[7].childNodes[0].setAttribute('onclick','addSubmit(this)')
+		obj.setAttribute('value','确定')
+		obj.setAttribute('onclick','addSubmit(this)')
 	}
 	
 	//初始化select标签，参数为option的value值的数组
@@ -206,7 +212,7 @@
 	{
 		string = 'method=cleanFlow'
 		ajax('/openms/accept.php', check, string)
-	}
+	} 
 
 	var check = function(response){
 			time = document.getElementById('time')
@@ -233,4 +239,4 @@
                  window.setTimeout("timer()",1000);
 	}
 	//显示页面
-	showJson(json);
+	//showJson(json);
