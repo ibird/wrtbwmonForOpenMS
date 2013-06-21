@@ -15,6 +15,17 @@ var initSelect = function( arr )
 	return select
 }	
 
+var arrToStr = function(arr)
+{
+		str = ''
+		for( x in arr )
+		{
+			str += x + '='
+			str += arr[x] + '&'
+
+		}
+}
+
 //ajax方法
 var ajax = function(url, f, string){ 
 	var xml = (window.XMLHttpRequest) ? (new XMLHttpRequest()) : (new ActiveXObject("Micorsoft.XMLHttpRequest"));
