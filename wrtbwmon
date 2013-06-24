@@ -130,8 +130,8 @@ case ${1} in
 			nf=0
            		content=`grep ${MAC} ${2}`
            		nf=`echo $content | tr ',' '\n' |grep -c 'mac'`	
-           		nf=$((nf*4+5))
-           		i=6
+           		nf=$((nf*4+4))
+           		i=5
 
 			# get the mac address's old flow
            		while [ $i -lt $nf ]
@@ -142,7 +142,7 @@ case ${1} in
                     			out=$(echo ${content} | cut  -d, -f$((i+2)) | awk -F\" '{print $4}')
                     			break
                 		fi
-				i=$((i+1))
+				i=$((i+4))
            		done
 			PEAKUSAGE_IN=$((in+IN))
 			PEAKUSAGE_OUT=$((out+OUT))
@@ -191,8 +191,8 @@ case ${1} in
         total=`echo $line | cut -d, -f3 | awk -F\" '{print $4}'`
         nowflow=`echo $line | cut -d, -f4 | awk -F\" '{print $4}'`
         nf=`echo $line |tr ',' '\n'| grep -c 'mac'`
-        i=6
-        nf=$((nf*4+5))
+        i=5
+        nf=$((nf*4+4))
         while [ $i -lt $nf ] 
         do
             mac=`echo $line | cut -d, -f$i | awk -F\" '{print $4}'`

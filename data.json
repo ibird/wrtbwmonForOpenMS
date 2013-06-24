@@ -1,4 +1,2 @@
 {"club":[
-{"id":"1","name":"\u8881\u5c11\u9e4f","total":"4294967296","nowflow":"10347154","device":[{"type":"pc","mac":"74:f0:6d:55:16:fb","in":"8704846","out":"1642308"}]},
-{"id":"2","name":"\u66fe\u5c11\u5251","total":"1073741824","nowflow":"0","device":[{"type":"pc","mac":"90:00:4e:1f:d1:ff","in":"0","out":"0"}]},
-{"id":"3","name":"\u5415\u4e2d","total":"2147483648","nowflow":"0","device":[]}]}
+{"name":"\u5415\u4e2d","total":"1073741824","nowflow":"0","device":[{"type":"pc","mac":"0d:ef:11:24:23:2a","in":"0","out":"0"},{"type":"kindle","mac":"ae:23:3a:4a:43:23","in":"0","out":"0"}]}]}

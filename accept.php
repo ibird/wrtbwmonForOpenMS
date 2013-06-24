@@ -1,128 +1,86 @@
 <?php
 
-//更改设备mac地址
-function change($device, $macaddr, $id, $json)
+function syncJson($json)
 {
-	foreach ($json['club'] as $k => $v)
-	{
-		if($v['id'] == $id)
-		{
-			foreach ($json['club'][$k]['device'] as $key=>$value)
-			{
-				if($value['type'] == $device)
-				{
-					$json['club'][$k]['device'][$key]['mac'] = $macaddr;
-				}
-			}
-		}
-	}
+	$json_File = "data.json";
+
 	$json_str = json_encode($json);
 	
 	//为了保证data.json的数据格式便于wrtbwmon脚本操作，在
 	//id前加入回车,保证每个用户一条记录占用一行
-	$json_str = str_replace('{"id"',"\n{\"id\"",$json_str);
+	$json_str = str_replace('{"name"',"\n{\"name\"",$json_str);
 	
-	file_put_contents('data.json',$json_str);
-	exec('wrtbwmon sync /www/openms/data.json /etc/config/wireless');
+	file_put_contents($json_File, $json_str);
+//	exec('wrtbwmon sync /www/openms/data.json /etc/config/wireless');
+}
+
+//更改设备mac地址
+function changeMac($id, $device, $macaddr, $json)
+{
+	$json['club'][$id]['device'][$device]['mac'] = $macaddr;
+	syncJson($json);
 }
 
 //新增设备
-function add($device, $macaddr, $id, $json)
+function addDevice($device, $macaddr, $id, $json)
 {
 	$arr['type'] = $device;
 	$arr['mac'] = $macaddr;
 	$arr['in'] = "0";
 	$arr['out'] = "0";
 
-	foreach ($json['club'] as $k => $v)
-	{
-		if($v['id'] == $id)
-		{
-			$json['club'][$k]['device'][] = $arr;
-		}
-	}
-	$json_str = json_encode($json);
-	$json_str = str_replace('{"id"',"\n{\"id\"",$json_str);
-	file_put_contents('data.json',$json_str);
-	exec('wrtbwmon sync /www/openms/data.json /etc/config/wireless');
+	$json['club'][$id]['device'][] = $arr;
+	syncJson($json);
 }
 
 //新增用户
-function adduser($id, $name, $total, $json)
+function addUser($name, $total, $json)
 {
-	$arr['id'] = $id;
+	$json_File = "data.json";
+
 	$arr['name'] = $name;
 	$arr['total'] = $total;
 	$arr['nowflow'] = "0";
 	$arr['device'] = array();
 
 	$json['club'][] = $arr;
+
 	$json_str = json_encode($json);
-	$json_str = str_replace('{"id"',"\n{\"id\"",$json_str);
-	file_put_contents('data.json',$json_str);
+	$json_str = str_replace('{"name"',"\n{\"name\"",$json_str);
+	file_put_contents($json_File, $json_str);
+	var_dump($json_str);
 }
 
 //更改设备流量
 function changeFlow($flow, $id, $json)
 {
 
-	foreach ($json['club'] as $k => $v)
-	{
-		if($v['id'] == $id)
-		{
-			$json['club'][$k]['total'] = $flow;
-		}
-	}
-	$json_str = json_encode($json);
-	$json_str = str_replace('{"id"',"\n{\"id\"",$json_str);
-	file_put_contents('data.json',$json_str);
-	exec('wrtbwmon sync /www/openms/data.json /etc/config/wireless');
+	$json['club'][$id]['total'] = $flow;
 
+	syncJson($json);
 }
 
 //删除设备
-function delDev($id, $mac, $json) 
+function delDevice($id, $device, $json) 
 {
-	foreach ($json['club'] as $k => $v)
-	{
-		if($v['id'] == $id)
-		{
-			foreach ($json['club'][$k]['device'] as $key => $value)
-			{
-				if($value['mac'] == $mac)
-				{
-					array_splice($json['club'][$k]['device'], $key, 1);
-				}
-			}
-		}
-	}
-	$json_str = json_encode($json);
-	$json_str = str_replace('{"id"',"\n{\"id\"",$json_str);
-	file_put_contents('data.json',$json_str);
-	exec('wrtbwmon sync /www/openms/data.json /etc/config/wireless');
+	array_splice($json['club'][$id]['device'], $device, 1);
+
+	syncJson($json);
 
 }
 
 //删除用户
 function delUser($id, $json)
 {
-	foreach ($json['club'] as $k => $v)
-	{
-		if($v['id'] == $id)
-		{
-			array_splice($json['club'], $k, 1);
-		}
-	}
-	$json_str = json_encode($json);
-	$json_str = str_replace('{"id"',"\n{\"id\"",$json_str);
-	file_put_contents('data.json',$json_str);
-	exec('wrtbwmon sync /www/openms/data.json /etc/config/wireless');
+	array_splice($json['club'], $id, 1);
+
+	syncJson($json);
 }
 
 //清除流量
 function cleanFlow()
 {
-	exec('wrtbwmon clear /www/openms/data.json /etc/config/wireless');
+//	exec('wrtbwmon clear /www/openms/data.json /etc/config/wireless');
 }
 
 //数据预处理
@@ -131,43 +89,44 @@ function funToArgv($fun)
 	$arr = array();
 	switch($fun)
 	{
-	case 'add':
+	case 'addDevice':
 	{
 		$arr['device'] = $_POST['device'];
 		$arr['macaddr'] = $_POST['macaddr'];
-		$arr['id'] = $_POST['id'];
+		$arr['id'] = (int)$_POST['id'];
 		break;
 	}
-	case 'change':
+	case 'changeMac':
 	{
-		$arr['device'] = $_POST['device'];
+		$temp = explode("_",$_POST['id']);
+		$arr['id'] = (int)$temp[0];
+		$arr['device'] = (int)$temp[1];
 		$arr['macaddr'] = $_POST['macaddr'];
-		$arr['id'] = $_POST['id'];
 		break;
 	}
 	case 'changeFlow':
 	{
 		// 将提交的GB 转为 byte
 		$arr['flow'] = (string)($_POST['flow'] * 1024 * 1024 * 1024);
-		$arr['id'] = $_POST['id'];
+		$arr['id'] = (int)$_POST['id'];
 		break;
 	}
-	case 'adduser':
+	case 'addUser':
 	{
-		$arr['id'] = $_POST['id'];
 		$arr['name'] = $_POST['name'];
 		$arr['total'] = (string)($_POST['total'] * 1024 * 1024 * 1024);
 		break;
 	}
-	case 'delDev':
+	case 'delDevice':
 	{
-		$arr['id'] = $_POST['id'];
-		$arr['mac'] = $_POST['mac'];
+		$temp = explode("_",$_POST['id']);
+		$arr['id'] = (int)$temp[0];
+		$arr['device'] = (int)$temp[1];
 		break;
 	}
 	case 'delUser':
 	{
-		$arr['id'] = $_POST['id'];
+		$arr['id'] = (int)$_POST['id'];
 		break;
 	}
 	case 'cleanFlow':

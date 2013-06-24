@@ -25,7 +25,7 @@
 	foreach ($json['club'] as $k => $v)
 	{
 		$device_n	= count($v['device']) + 1;
-		$id		= $v['id'];
+		$id		= $k;
 		$name		= $v['name'];
 		$total		= (int)($v['total'] / 1024 / 1024);
 		$nowflow	= (int)($v['nowflow'] / 1024 / 1024);
@@ -79,8 +79,8 @@
 	$total_out = (int)($total_out / 1024 / 1024);
 	$total_in = (int)($total_in / 1024 / 1024);
 	echo "<tr>";
-	echo "<td></td>";
-	echo "<td></td>";
+	echo "<td id='newname'></td>";
+	echo "<td id='newflow'></td>";
 	echo "<td colspan='5'></td>";
 	echo "<td colspan='4'><input type='button' value='新增用户' name='$id' onclick='addUser(this)' /></td>";
 	echo "</tr>";
