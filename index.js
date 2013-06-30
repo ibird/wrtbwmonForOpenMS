@@ -219,5 +219,5 @@ var check = function(response){
 }
 
 var timer =function(){
-	window.location.assign('http://127.0.0.1/FControl/index.php')
+	window.location.assign(window.location.href)
 }
