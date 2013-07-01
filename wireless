@@ -1,0 +1,14 @@
+config wifi-device  radio0
+	option type     mac80211
+	option channel  11
+	option macaddr  5c:63:bf:fd:fb:0f
+	option hwmode	11ng
+
+config wifi-iface
+	option device   radio0
+	option network  lan
+	option mode     ap
+	option ssid     XDTIC
+	option encryption psk2
+	option key	XDTInnovationC
+	option macfilter allow

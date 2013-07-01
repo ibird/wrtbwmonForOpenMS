@@ -28,23 +28,31 @@ WAN='eth1.1'
 # Get the filter file
 # For example, we can filter the intranet traffic
 
-FILTER='/www/filter.txt'
+FILTER='/www/FControl/filter.txt'
+JSON='/www/FControl/data.json'
+WIRELESS='/etc/config/wireless'
 
+if [ ! -f $JSON ];then
+    echo "The Json file is missing!"
+    exit
+fi
+
+if [ ! -f $WIRELESS ];then
+    echo "The Wireless file is missing"
+    exit
+fi
+        
 #use SED to annotate the mac address in the file
 #Make the mac address unwork
 del_mac ()
 {
-    config_file=$1
-    mac=$2
-    if [ ! -f $config_file ];then
-        echo "mac list config file"
-        exit
-    elif [ -z $mac ];then
-        echo "need mac"
+    mac=$1
+    if [ -z $mac ];then
+        echo "Need Macaddress"
         exit
     fi
     #del mac user
-    sed -i "/$mac/ s/\tlist/#list/" $config_file
+    sed -i "/$mac/ s/\tlist/#list/" $WIRELESS
 
 }
 
@@ -80,7 +88,7 @@ case ${1} in
 	fi
 		
 	#For each ip in the filter table
-	cat $FILTER |while read IP ;
+	[ -f $FILTER ] && cat $FILTER |while read IP ;
 	do
 		iptables -nL FILTER |grep "${IP}" > /dev/null
 		if [ $? -ne 0 ]; then
@@ -102,7 +110,6 @@ case ${1} in
 	;;
 	
 "update" )
-	[ -z "${2}" ] && echo "ERROR : Missing argument 2" && exit 1
 	
 	#Read and reset counters
 	traffic=`iptables -L RRDIPT -vnxZ -t filter `
@@ -128,7 +135,7 @@ case ${1} in
 			# compute the number of the user's mac address
 			# detail see the data.json
 			nf=0
-           		content=`grep ${MAC} ${2}`
+           		content=`grep ${MAC} $JSON`
            		nf=`echo $content | tr ',' '\n' |grep -c 'mac'`	
            		nf=$((nf*4+4))
            		i=5
@@ -146,11 +153,13 @@ case ${1} in
            		done
 			PEAKUSAGE_IN=$((in+IN))
 			PEAKUSAGE_OUT=$((out+OUT))
-            		nowflow=$((PEAKUSAGE_OUT+PEAKUSAGE_IN));
+			
+			nowflow=`echo $content|grep $MAC|tr ',:"' ' ' |awk '{print $7}'`
+            		nowflow=$((nowflow+OUT+IN));
 
 			#update nowflow and in and out flow to the file
-             		sed -i  "/$MAC/  s/nowflow\":\"[0-9]*\"/nowflow\":\"$nowflow\"/" $2
-            		sed -i "s/\"${MAC}\",\"in\":\"$in\",\"out\":\"$out\"/\"${MAC}\",\"in\":\"${PEAKUSAGE_IN}\",\"out\":\"${PEAKUSAGE_OUT}\"/" ${2}
+             		sed -i  "/$MAC/  s/nowflow\":\"[0-9]*\"/nowflow\":\"$nowflow\"/" $JSON
+            		sed -i "s/\"${MAC}\",\"in\":\"$in\",\"out\":\"$out\"/\"${MAC}\",\"in\":\"${PEAKUSAGE_IN}\",\"out\":\"${PEAKUSAGE_OUT}\"/" $JSON
 		fi
 	done
 	
@@ -158,38 +167,25 @@ case ${1} in
 	rm -f /tmp/*_$$.tmp
 	;;
 	
-"clear" )  # $2 is json file. $3 is the maclist file
-    if [ ! -f $2 -o ! -f $3  ];then
-        if [ ! -f $2 ];then
-            echo "json file wrong!"
-        else
-            echo "maclist file wrong!"
-        fi
-    exit
-    fi
+"clear" )  
     #bake-up the file
-    cp $2 $2.`date -I`
+    cp $JSON $JSON.`date -I`
     #clear
-    sed -i "s/nowflow\":\"[0-9]*\"/nowflow\":\"0\"/" ${2}
-    sed -i "s/in\":\"[0-9]*\",\"out\":\"[0-9]*\"/in\":\"0\",\"out\":\"0\"/g" ${2}
+    sed -i "s/nowflow\":\"[0-9]*\"/nowflow\":\"0\"/" $JSON
+    sed -i "s/in\":\"[0-9]*\",\"out\":\"[0-9]*\"/in\":\"0\",\"out\":\"0\"/g" $JSON
 
     #sync
-    sed -i "s/^#//" $3
+    sed -i "s/^#//" $WIRELESS
 
     ;;
 
 "sync" )  
-# $2  is the json file. $3 is the  maclist file
-    if [ ! -f $2 -o ! -f $3 ];then
-        echo "json file and maclist file not exist!"
-        exit
-    fi
-    cp $3 $3.bak
-    config=`grep -v 'list maclist' $3.bak > $3` 
-    for line in `grep 'id' $2`
+    cp $WIRELESS $WIRELESS.bak
+    config=`grep -v 'list maclist' $WIRELESS.bak > $WIRELESS` 
+    for line in `grep 'name' $JSON`
     do
-        total=`echo $line | cut -d, -f3 | awk -F\" '{print $4}'`
-        nowflow=`echo $line | cut -d, -f4 | awk -F\" '{print $4}'`
+        total=`echo $line | cut -d, -f2 | awk -F\" '{print $4}'`
+        nowflow=`echo $line | cut -d, -f3 | awk -F\" '{print $4}'`
         nf=`echo $line |tr ',' '\n'| grep -c 'mac'`
         i=5
         nf=$((nf*4+4))
@@ -197,14 +193,14 @@ case ${1} in
         do
             mac=`echo $line | cut -d, -f$i | awk -F\" '{print $4}'`
             if [ $total -gt $nowflow ];then
-                echo -e "\tlist maclist $mac" >> $3
+                echo -e "\tlist maclist $mac" >> $WIRELESS
             else
-                echo -e "#\tlist maclist $mac" >> $3
+                echo -e "#\tlist maclist $mac" >> $WIRELESS
             fi
 	    i=$((i+4))
         done
     done
-    rm -f $3.bak
+    rm -f $WIRELESS.bak
     (wifi down;wifi up)&
     ;;
 
@@ -212,14 +208,15 @@ case ${1} in
 	echo "Usage : $0 {setup|update|clear|sync} [options...]"
 	echo "Options : " 
 	echo "   $0 setup"
-	echo "   $0 update json_file"
-	echo "   $0 clear json_file maclist_file"
-	echo "   $0 sync  json_file maclist_file"
+	echo "   $0 update"
+	echo "   $0 clear"
+	echo "   $0 sync"
 	echo "Examples : "
-	echo "   $0 setup"
-	echo "   $0 update /www/data.json"
-	echo "   $0 clear  /www/data.json /etc/config/wireless"
-	echo "   $0 sync   /www/data.json /etc/config/wireless"
+	echo "   $0 setup br-lan"
+	echo "   $0 update"
+	echo "   $0 clear"
+	echo "   $0 sync"
 	exit
 	;;
 esac
+

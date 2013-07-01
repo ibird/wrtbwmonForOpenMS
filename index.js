@@ -52,10 +52,7 @@ var checkFlag = function()
 var ajax = function(url, f, string){ 
 	var xml = (window.XMLHttpRequest) ? (new XMLHttpRequest()) : (new ActiveXObject("Micorsoft.XMLHttpRequest"));
 	xml.onreadystatechange = function(){
-		if(xml.readyState == 4 && xml.status == 200)
-		{
   			f(xml.responseText);
-		}
 	}
 
 	xml.open("POST",url,true);
@@ -215,9 +212,6 @@ var cleanFlow = function()
 } 
 
 var check = function(response){
-		timer()
+	setTimeout('window.location.assign(window.location.href)',2000)
 }
 
-var timer =function(){
-	window.location.assign(window.location.href)
-}
