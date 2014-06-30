@@ -22,8 +22,8 @@
 		-	cron			Linux下的定时管理任务守护进程（自带）
 			Cron Config:
 				* * * * * /bin/wrtbwmon setup br-lan
-				* * * * * /bin/wrtbwmon update /www/openms/data.json
-				3 1 1 * * /bin/wrtbwmon clear /www/openms/data.json /etc/config/wireless
+				* * * * * /bin/wrtbwmon update 
+				3 1 1 * * /bin/wrtbwmon clear 
 		-	uhttpd			Openwrt下的web服务器	(opkg install uhttpd)
 		-	php5			php解析器		(opkg install php5)
 		-	php5-mod-json	php的json处理模块	(opkg install php5-mod-json）
